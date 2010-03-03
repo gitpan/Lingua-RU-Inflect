@@ -6,7 +6,7 @@ WriteMakefile(
     NAME                => 'Lingua::RU::Inflect',
     AUTHOR              => q{Alexander Sapozhnikov <shoorick@cpan.org>},
     VERSION_FROM        => 'lib/Lingua/RU/Inflect.pm',
-    ABSTRACT            => 'Lingua::RU::Inflect — Inflect russian names',
+    ABSTRACT            => 'Lingua::RU::Inflect - Inflect russian names',
     ($ExtUtils::MakeMaker::VERSION >= 6.3002
       ? ('LICENSE'=> 'perl')
       : ()),

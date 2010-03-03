@@ -1,7 +1,7 @@
 --- #YAML:1.0
 name:               Lingua-RU-Inflect
-version:            0.01
-abstract:           Lingua::RU::Inflect — Inflect russian names
+version:            0.02
+abstract:           Lingua::RU::Inflect - Inflect russian names
 author:
     - Alexander Sapozhnikov <shoorick@cpan.org>
 license:            perl

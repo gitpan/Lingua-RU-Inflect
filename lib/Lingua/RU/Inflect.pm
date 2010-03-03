@@ -4,20 +4,30 @@ use warnings;
 use strict;
 use utf8;
 
+=encoding utf8
+
 =head1 NAME
 
-Lingua::RU::Inflect — Inflect russian names.
+Lingua::RU::Inflect - Inflect russian names.
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
+
+=head1 DESCRIPTION
+
+Lingua::RU::Inflect is a perl module
+that provides Russian linguistic procedures
+such as declension of given names (with some nouns and adjectives too),
+gender detection by given name
+and choosing of proper forms of varying prepositions.
 
 =cut
 
-our $VERSION = '0.01';
 our ($REVISION, $DATE);
-($REVISION) = q$Revision: 130 $ =~ /(\d+)/g;
-($DATE)     = q$Date: 2010-02-24 01:09:23 +0500 (Wed, 24 Feb 2010) $ =~ /: (\d+)\s*$/g;
+($REVISION) = q$Revision: 146 $ =~ /(\d+)/g;
+($DATE)
+    = q$Date: 2010-03-04 03:40:14 +0500 (Thu, 04 Mar 2010) $ =~ /: (\d+)\s*$/g;
 
 
 BEGIN {
@@ -25,11 +35,12 @@ BEGIN {
     our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
     # set the version for version checking
-    $VERSION     = 0.01;
+    $VERSION     = 0.02;
 
     @ISA         = qw(Exporter);
     @EXPORT      = qw(
         inflect_given_name detect_gender_by_given_name
+        choose_preposition_by_next_word
     );
 
     # exported package globals
@@ -38,12 +49,20 @@ BEGIN {
         ACCUSATIVE INSTRUMENTAL PREPOSITIONAL
         %CASES
         MASCULINE FEMININE
+        izo ko nado ob oto predo peredo podo so vo
     );
 
     %EXPORT_TAGS = (
-        'subs'    => [ qw( inflect_given_name detect_gender_by_given_name ) ],
+        'subs'    => [ qw(
+            inflect_given_name detect_gender_by_given_name
+            choose_preposition_by_next_word
+        ) ],
+        'short'   => [ qw( izo ko nado ob oto predo peredo podo so vo ) ],
         'genders' => [ qw( MASCULINE  FEMININE ) ],
-        'cases'   => [ qw( NOMINATIVE GENITIVE DATIVE ACCUSATIVE INSTRUMENTAL PREPOSITIONAL %CASES ) ],
+        'cases'   => [ qw(
+            NOMINATIVE GENITIVE DATIVE ACCUSATIVE INSTRUMENTAL PREPOSITIONAL
+            %CASES
+        ) ],
         'all'     => [ @EXPORT, @EXPORT_OK ],
     )
 
@@ -76,19 +95,21 @@ use constant {
 
 =head1 SYNOPSIS
 
-Inflect russian names which represented in UTF-8.
+Inflects russian names which represented in UTF-8.
 
 Perhaps a little code snippet.
 
     use Lingua::RU::Inflect;
 
     my @name = qw/Петрова Любовь Степановна/;
+    # Transliteration of above line is: Petrova Lyubov' Stepanovna
 
     my $gender = detect_gender_by_given_name(@name);
     # $gender == FEMININE
 
     my @genitive = inflect_given_name(GENITIVE, @name);
     # $genitive == qw/Петровой Любови Степановны/;
+    # Transliteration of above line is: Petrovoy Lyubovi Stepanovny
 
 =head1 TO DO
 
@@ -107,10 +128,14 @@ Or only subs and genders
 
     use Lingua::RU::Inflect qw/:subs :genders/;
 
-Or everything: subs, genders and case names:
+Or only short aliases for subs
+
+    use Lingua::RU::Inflect qw/:short/;
+
+Or everything: subs, aliases, genders and case names:
 
     use Lingua::RU::Inflect qw/:all/; # or
-    use Lingua::RU::Inflect qw/:cases :genders :subs/;
+    use Lingua::RU::Inflect qw/:cases :genders :subs :short/;
 
 =head1 FUNCTIONS
 
@@ -192,17 +217,17 @@ sub detect_gender_by_given_name {
 
     unless ( $ambiguous ) {
         # Feminine firstnames ends to vowels
-        return FEMININE if $firstname =~ /[ая]$/;
+        return FEMININE  if $firstname =~ /[ая]$/;
         # Masculine firstnames ends to consonants
         return MASCULINE if $firstname !~ /[аеёиоуыэюя]$/;
     } # unless
 
     # Detect by lastname
     # possessive names
-    return FEMININE if $lastname =~ /(ев|ин|ын|ёв|ов)а$/;
+    return FEMININE  if $lastname =~ /(ев|ин|ын|ёв|ов)а$/;
     return MASCULINE if $lastname =~ /(ев|ин|ын|ёв|ов)$/;
     # adjectives
-    return FEMININE if $lastname =~ /(ая|яя)$/;
+    return FEMININE  if $lastname =~ /(ая|яя)$/;
     return MASCULINE if $lastname =~ /(ий|ый)$/;
 
     # Unknown or ambiguous name
@@ -211,11 +236,12 @@ sub detect_gender_by_given_name {
 
 =head2 _inflect_given_name
 
-Inflect name of given gender to given case.
-Up to 5 arguments expected: gender, case, lastname, firstname, patronym.
-Lastname, firstname, patronym must be in Nominative.
+Inflects name of given gender to given case.
+Up to 5 arguments expected:
+I<gender>, I<case>, I<lastname>, I<firstname>, I<patronym>.
+I<Lastname>, I<firstname>, I<patronym> must be in Nominative.
 
-Return list contains inflected lastname, firstname, patronym.
+Returns list which contains inflected I<lastname>, I<firstname>, I<patronym>.
 
 =cut
 
@@ -254,7 +280,12 @@ sub _inflect_given_name {
         last if $firstname =~ /[еёиоуыэю]$/i;
         last if $firstname =~ /[аеёиоуыэюя]а$/i;
         last if $firstname =~ /[аёоуыэюя]я$/i;
-        last if $firstname =~ /[бвгджзклмнйпрстфхцчшщ]$/i && $gender != MASCULINE;
+        last
+            if (
+                !defined $gender
+                || $gender == FEMININE
+            )
+            && $firstname =~ /[бвгджзклмнйпрстфхцчшщ]$/i;
 
         last if $firstname =~ s/ия$/qw(ии ии ию ией ие)[$case]/e;
         last if $firstname =~ s/а$/qw(ы е у ой е)[$case]/e;
@@ -281,9 +312,10 @@ sub _inflect_given_name {
         # Indeclinable
         last if $lastname =~ /[еёиоуыэю]$/i;
         last if $lastname =~ /[аеёиоуыэюя]а$/i;
-        last if $lastname =~ /[ёоуыэю]я$/i;
         # Lastnames such as “Belaya” and “Sinyaya”
         #  which ends to “aya” and “yaya” must be inflected
+        last if $lastname =~ /[ёоуыэю]я$/i;
+        last if $lastname =~ /[иы]х$/i;
 
         # Feminine lastnames
         last
@@ -319,12 +351,15 @@ sub _inflect_given_name {
 
 =head2 inflect_given_name
 
-Detect gender by given name and inflect this name.
+Detects gender by given name and inflect parts of this name.
 
-Expect for up to 4 arguments:
+Expects for up to 4 arguments:
 I<case>, I<lastname>, I<firstname>, I<patronym>
 
-Return list which contains
+Available I<cases> are: C<NOMINATIVE>, C<GENITIVE>, C<DATIVE>,
+C<ACCUSATIVE>, C<INSTRUMENTAL>, C<PREPOSITIONAL>.
+
+It returns list which contains
 inflected I<lastname>, I<firstname>, I<patronym>
 
 =cut
@@ -332,8 +367,171 @@ inflected I<lastname>, I<firstname>, I<patronym>
 sub inflect_given_name {
     my $case = shift;
     return @_ if $case eq NOMINATIVE;
-    my @name = _inflect_given_name( detect_gender_by_given_name( @_ ), $case, @_ );
+    my @name = _inflect_given_name(
+        detect_gender_by_given_name( @_ ), $case, @_
+    );
 } # sub inflect_given_name
+
+
+=head2 choose_preposition_by_next_word
+
+Chooses preposition by next word and returns chosen preposition.
+
+Expects 2 arguments: I<preposition> and I<next_word>.
+I<Preposition> should be string with shortest of possible values.
+Available values of I<preposition> are:
+C<'в'>, C<'из'>, C<'к'>, C<'над'>, C<'о'>, C<'от'>, C<'пред'>, C<'перед'>,
+C<'под'> and  C<'с'>.
+
+There is an aliases for calling this subroutine with common preposition:
+
+=head3 izo
+
+C<izo> is an alias for C<choose_preposition_by_next_word 'из',>
+
+=head3 ko
+
+C<ko> is an alias for C<choose_preposition_by_next_word 'к',>
+
+=head3 nado
+
+C<nado> is an alias for C<choose_preposition_by_next_word 'над',>
+
+=head3 ob
+
+C<ob> is an alias for C<choose_preposition_by_next_word 'о',>
+
+=head3 oto
+
+C<oto> is an alias for C<choose_preposition_by_next_word 'от',>
+
+=head3 podo
+
+C<podo> is an alias for C<choose_preposition_by_next_word 'под',>
+
+=head3 predo
+
+C<predo> is an alias for C<choose_preposition_by_next_word 'пред',>
+
+=head3 peredo
+
+C<peredo> is an alias for C<choose_preposition_by_next_word 'перед',>
+
+=head3 so
+
+C<so> is an alias for C<choose_preposition_by_next_word 'с',>
+
+=head3 vo
+
+C<vo> is an alias for C<choose_preposition_by_next_word 'в',>
+
+These aliases are not exported by default. They can be expored with tags C<:short> or C<:all>.
+
+Examples of code with these aliases:
+
+    use Lingua::RU::Inflect qw/:short/;
+
+    map {
+        print ob, $_;
+    } qw(
+        арбузе баране всём Елене ёлке игле йоде
+        мне многом огне паре ухе юге яблоке
+    );
+
+    map {
+        print so, $_;
+    } qw(
+        огнём водой
+        зарёй зноем зрением зябликом
+        садом светом слоном спичками ссылкой
+        Стёпой стаканом сухарём сэром топором
+        жарой жбаном жратвой жуком
+        шаром шкафом шлангом шубой
+    );
+
+=cut
+
+sub choose_preposition_by_next_word {
+    my $preposition = lc shift or return undef;
+    local $_        = lc shift or return undef;
+
+    # Nested subroutine
+    local *_check_instrumental = sub {
+        for my $word qw( льдом льном мной мною ) {
+            return $_[0] . 'о' if $word eq $_[1]
+        }
+        return $_[0]
+    }; # _check_instrumental
+
+    # preposition => function
+    # TODO Check by dictionary
+    my %GRAMMAR = (
+        'в' => sub {
+            for my $word qw( все всём мне мно ) {
+                return 'во' if /^$word/
+            }
+            /^[вф][^аеёиоуыэюя]/
+            ? 'во'
+            : 'в'
+        },
+        'из' => sub {
+            for my $word qw( всех ) {
+                return 'изо' if $word eq $_
+            }
+            'из'
+        },
+        'к' => sub {
+            for my $word qw( всем мне мно ) {
+                return 'ко' if /^$word/
+            }
+            'к'
+        },
+        'о' => sub {
+            for my $word qw( всех всем всём мне ) {
+                return 'обо' if $word eq $_
+            }
+            return
+                /^[аиоуыэ]/
+                ? 'об'
+                : 'о'
+        },
+        'от' => sub {
+            for my $word qw( всех ) {
+                return 'ото' if $word eq $_
+            }
+            'от'
+        },
+        'с' => sub {
+            return 'со' if /^мно/;
+            return
+                /^[жзсш][^аеёиоуыэюя]/i
+                ? 'со'
+                : 'с'
+        },
+        # Same rules:
+        'над'   => sub { _check_instrumental('над',   $_) },
+        'под'   => sub { _check_instrumental('под',   $_) },
+        'перед' => sub { _check_instrumental('перед', $_) },
+        'пред'  => sub { _check_instrumental('пред',  $_) },
+    );
+
+    return undef unless exists $GRAMMAR{$preposition};
+
+    $GRAMMAR{$preposition}->($_);
+
+} # sub choose_preposition_by_next_word
+
+# Aliases
+*izo    = sub { choose_preposition_by_next_word 'из',    shift };
+*ko     = sub { choose_preposition_by_next_word 'к',     shift };
+*nado   = sub { choose_preposition_by_next_word 'над',   shift };
+*ob     = sub { choose_preposition_by_next_word 'о',     shift };
+*oto    = sub { choose_preposition_by_next_word 'от',    shift };
+*predo  = sub { choose_preposition_by_next_word 'пред',  shift };
+*peredo = sub { choose_preposition_by_next_word 'перед', shift };
+*podo   = sub { choose_preposition_by_next_word 'под',   shift };
+*so     = sub { choose_preposition_by_next_word 'с',     shift };
+*vo     = sub { choose_preposition_by_next_word 'в',     shift };
 
 # Exceptions:
 
@@ -347,9 +545,9 @@ sub _MASCULINE_NAMES {
         Иешуа Ильмурза Илья Иона Исайя Иуда Йегошуа Йегуда Йедидья Карагужа Коля
         Костя Кузьма Лёха Лёша Лука Ларри Марданша Микола Мирза Миха Миша Мойша
         Муртаза Муса Мусса Мустафа Никита Нэта Нэхэмья Овадья Петя Птахья
-        Рахматулла Риза Рома Савва Сафа Серёга Серёжа Сила Симха Сэадья Товия Толя
-        Федя Фима Фока Фома Хамза Хананья Цфанья Шалва Шахна Шрага Эзра Элиша
-        Элькана Юмагужа Ярулла Яхья Яша
+        Рахматулла Риза Рома Савва Сафа Серёга Серёжа Сила Симха Сэадья Товия
+        Толя Федя Фима Фока Фома Хамза Хананья Цфанья Шалва Шахна Шрага Эзра
+        Элиша Элькана Юмагужа Ярулла Яхья Яша
     )
 }
 
@@ -371,15 +569,12 @@ sub _FEMININE_NAMES {
     )
 }
 
+# Ambiguous names which can be masculine and feminine
 sub _AMBIGUOUS_NAMES {
     return qw(
-        Женя Мина Паша Саша Шура
+        Валя Женя Мина Паша Саша Шура
     )
 }
-
-=head1 SEE ALSO
-
-L<http://www.imena.org/declension.html> (in Russian)
 
 =head1 AUTHOR
 
@@ -387,9 +582,11 @@ Alexander Sapozhnikov, C<< <shoorick at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-lingua-ru-inflect at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Lingua-RU-Inflect>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
+Please report any bugs or feature requests
+to C<bug-lingua-ru-inflect at rt.cpan.org>, or through the web interface
+at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Lingua-RU-Inflect>.
+I will be notified, and then
+you'll automatically be notified of progress on your bug as I make changes.
 
 =head1 SUPPORT
 
@@ -419,8 +616,14 @@ L<http://search.cpan.org/dist/Lingua-RU-Inflect/>
 
 =back
 
+=head1 SEE ALSO
+
+Russian translation of this documentation available
+at F<RU/Lingua/RU/Inflect.pod>
 
 =head1 ACKNOWLEDGEMENTS
+
+L<http://www.imena.org/declension.html> (in Russian) for rules of declension.
 
 =head1 COPYRIGHT & LICENSE
 
