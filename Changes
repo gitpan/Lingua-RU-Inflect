@@ -6,6 +6,15 @@ Revision history for Lingua-RU-Inflect
 
 0.02    04 Mar 2010
         Included documentation in Russian.
-        Sub choose_prepositions_by_next_word and its aliases was added.
+        Sub choose_preposition_by_next_word and its aliases was added.
         More tests was added.
-        Some bugs fixed.
+        Some bugs was fixed.
+
+0.03    18 Feb 2011
+        Arguments can be transmitted to functions as list or hashes.
+        Prepositional subs and aliases now DEPRECATED, they moved
+        to Lingua::RU::Preposition
+
+0.04    16 Aug 2012
+        Fixed warning (perl 5.14 and newer, thank to vividshow@github for patch)
+

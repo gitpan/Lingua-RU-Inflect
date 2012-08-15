@@ -12,22 +12,25 @@ Lingua::RU::Inflect - Inflect russian names.
 
 =head1 VERSION
 
-Version 0.02
+Version 0.04
 
 =head1 DESCRIPTION
 
 Lingua::RU::Inflect is a perl module
 that provides Russian linguistic procedures
 such as declension of given names (with some nouns and adjectives too),
-gender detection by given name
-and choosing of proper forms of varying prepositions.
+and gender detection by given name.
+
+Choosing of proper forms of varying prepositions
+which added in 0.02 now DEPRECATED,
+use L<Lingua::RU::Preposition> instead.
 
 =cut
 
 our ($REVISION, $DATE);
-($REVISION) = q$Revision: 146 $ =~ /(\d+)/g;
+($REVISION) = q$Revision$ =~ /(\d+)/g;
 ($DATE)
-    = q$Date: 2010-03-04 03:40:14 +0500 (Thu, 04 Mar 2010) $ =~ /: (\d+)\s*$/g;
+    = q$Date$ =~ /: (\d+)\s*$/g;
 
 
 BEGIN {
@@ -35,7 +38,7 @@ BEGIN {
     our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
     # set the version for version checking
-    $VERSION     = 0.02;
+    $VERSION     = 0.04;
 
     @ISA         = qw(Exporter);
     @EXPORT      = qw(
@@ -113,7 +116,8 @@ Perhaps a little code snippet.
 
 =head1 TO DO
 
-Inflect any nouns, any words, anything...
+1. Inflect any nouns, any words, anything...
+2. Move preposition related function to L<Lingua::RU::Preposition>
 
 =head1 EXPORT
 
@@ -249,6 +253,7 @@ sub _inflect_given_name {
     my $gender = shift;
     my $case   = shift;
 
+    return @_ if $case eq NOMINATIVE;
     return
         if $case < GENITIVE
         || $case > PREPOSITIONAL;
@@ -288,7 +293,9 @@ sub _inflect_given_name {
             && $firstname =~ /[бвгджзклмнйпрстфхцчшщ]$/i;
 
         last if $firstname =~ s/ия$/qw(ии ии ию ией ие)[$case]/e;
+        last if $firstname =~ s/([гжйкхчшщ])а$/$1.qw(и е у ой е)[$case]/e;
         last if $firstname =~ s/а$/qw(ы е у ой е)[$case]/e;
+        last if $firstname =~ s/мя$/qw(мени мени мя менем мени)[$case]/e; # common nouns such as “Imya” (Name)
         last if $firstname =~ s/я$/qw(и е ю ей е)[$case]/e;
         last if $firstname =~ s/й$/qw(я ю я ем е)[$case]/e;
 
@@ -321,6 +328,8 @@ sub _inflect_given_name {
         last
             if $lastname =~ /(ин|ын|ев|ёв|ов)а$/
             && $lastname =~ s/а$/qw(ой ой у ой ой)[$case]/e;
+        # TODO Does not process usual worls: Podkova, Sova etc
+        # TODO Decide/search what can I do with ambigous names: Mashina, Vagina etc
 
         # And masculine ones
         last
@@ -338,6 +347,7 @@ sub _inflect_given_name {
         # Rest of masculine lastnames
         if ( $gender == MASCULINE ) {
             last if $lastname =~ s/а$/qw(ы е у ой е)[$case]/e;
+            last if $lastname =~ s/мя$/qw(мени мени мя менем мени)[$case]/e;
             last if $lastname =~ s/я$/qw(и е ю ёй е)[$case]/e;
             last if $lastname =~ s/й$/qw(я ю й ем е)[$case]/e;
             last if $lastname =~ s/ь$/qw(я ю я ем е)[$case]/e;
@@ -451,13 +461,13 @@ Examples of code with these aliases:
 
 =cut
 
-sub choose_preposition_by_next_word {
+sub choose_preposition_by_next_word ($$) {
     my $preposition = lc shift or return undef;
     local $_        = lc shift or return undef;
 
     # Nested subroutine
     local *_check_instrumental = sub {
-        for my $word qw( льдом льном мной мною ) {
+        for my $word (qw( льдом льном мной мною )) {
             return $_[0] . 'о' if $word eq $_[1]
         }
         return $_[0]
@@ -467,7 +477,7 @@ sub choose_preposition_by_next_word {
     # TODO Check by dictionary
     my %GRAMMAR = (
         'в' => sub {
-            for my $word qw( все всём мне мно ) {
+            for my $word (qw( все всём мне мно )) {
                 return 'во' if /^$word/
             }
             /^[вф][^аеёиоуыэюя]/
@@ -475,19 +485,19 @@ sub choose_preposition_by_next_word {
             : 'в'
         },
         'из' => sub {
-            for my $word qw( всех ) {
+            for my $word (qw( всех )) {
                 return 'изо' if $word eq $_
             }
             'из'
         },
         'к' => sub {
-            for my $word qw( всем мне мно ) {
+            for my $word (qw( всем мне мно )) {
                 return 'ко' if /^$word/
             }
             'к'
         },
         'о' => sub {
-            for my $word qw( всех всем всём мне ) {
+            for my $word (qw( всех всем всём мне )) {
                 return 'обо' if $word eq $_
             }
             return
@@ -496,7 +506,7 @@ sub choose_preposition_by_next_word {
                 : 'о'
         },
         'от' => sub {
-            for my $word qw( всех ) {
+            for my $word (qw( всех )) {
                 return 'ото' if $word eq $_
             }
             'от'
@@ -536,14 +546,14 @@ sub choose_preposition_by_next_word {
 # Exceptions:
 
 # Masculine names which ends to vowels “a” and “ya”
-sub _MASCULINE_NAMES {
+sub _MASCULINE_NAMES () {
     return qw(
         Аба Азарья Акива Аккужа Аникита Алёша Андрюха Андрюша Аса Байгужа
         Вафа Ваня Вася Витя Вова Володя Габдулла Габидулла Гаврила Гадельша
         Гайнулла Гайса Гайфулла Галиулла Гарри Гата Гдалья Гийора Гиля Гошеа
         Данила Джиханша Дима Зайнулла Закария Зия Зосима Зхарья Зыя Идельгужа
-        Иешуа Ильмурза Илья Иона Исайя Иуда Йегошуа Йегуда Йедидья Карагужа Коля
-        Костя Кузьма Лёха Лёша Лука Ларри Марданша Микола Мирза Миха Миша Мойша
+        Иешуа Изя Ильмурза Илья Иона Исайя Иуда Йегошуа Йегуда Йедидья Карагужа Коля
+        Костя Кузьма Лёха Лёша Лука Ларри Марданша Микола Мирза Миха Миша Мойша Моня
         Муртаза Муса Мусса Мустафа Никита Нэта Нэхэмья Овадья Петя Птахья
         Рахматулла Риза Рома Савва Сафа Серёга Серёжа Сила Симха Сэадья Товия
         Толя Федя Фима Фока Фома Хамза Хананья Цфанья Шалва Шахна Шрага Эзра
@@ -552,7 +562,7 @@ sub _MASCULINE_NAMES {
 }
 
 # Feminine names which ends to consonants
-sub _FEMININE_NAMES {
+sub _FEMININE_NAMES () {
     return qw(
         Айгуль Айгюль Айзиряк Айрис Альфинур Асылгюль Бадар Бадиян Банат Бедер
         Бибикамал Бибинур Гайниджамал Гайникамал Гаухар Гиффат Гулендем
@@ -570,7 +580,7 @@ sub _FEMININE_NAMES {
 }
 
 # Ambiguous names which can be masculine and feminine
-sub _AMBIGUOUS_NAMES {
+sub _AMBIGUOUS_NAMES () {
     return qw(
         Валя Женя Мина Паша Саша Шура
     )
@@ -614,6 +624,10 @@ L<http://cpanratings.perl.org/d/Lingua-RU-Inflect>
 
 L<http://search.cpan.org/dist/Lingua-RU-Inflect/>
 
+=item * Public repository at github
+
+L<https://github.com/shoorick/lingua-ru-inflect>
+
 =back
 
 =head1 SEE ALSO
@@ -627,7 +641,7 @@ L<http://www.imena.org/declension.html> (in Russian) for rules of declension.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2010 Alexander Sapozhnikov.
+Copyright 2009-2012 Alexander Sapozhnikov.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
