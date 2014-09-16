@@ -16,5 +16,7 @@ Revision history for Lingua-RU-Inflect
         to Lingua::RU::Preposition
 
 0.04    16 Aug 2012
-        Fixed warning (perl 5.14 and newer, thank to vividshow@github for patch)
+        Warning was fixed (perl 5.14 and newer, thank to vividshow@github for patch)
 
+0.05    16 Sep 2014
+        Prepositional function was removed.
